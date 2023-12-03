@@ -1,6 +1,7 @@
 package main
 
 import (
+	"jwt-authentication-golang/config"
 	"jwt-authentication-golang/controllers"
 	"jwt-authentication-golang/database"
 	"jwt-authentication-golang/middlewares"
@@ -10,7 +11,10 @@ import (
 
 func main() {
 	// Initialize Database
-	database.Connect("root:root@tcp(localhost:3306)/jwt_demo?parseTime=true")
+	dbUsername := config.Config("db_username")
+	dbPassword := config.Config("db_password")
+	connectUrl := dbUsername + ":" + dbPassword + "@tcp(localhost:3306)/jwt_demo?parseTime=true"
+	database.Connect(connectUrl)
 	database.Migrate()
 
 	// Initialize Router
