@@ -7,6 +7,9 @@ import (
 )
 
 // Config func to get env value from key ---
+/*
+note the dontsubmit.env file should be in the root dir
+*/
 func Config(key string) string {
 	// load .env file
 	err := godotenv.Load("dontsubmit.env")
