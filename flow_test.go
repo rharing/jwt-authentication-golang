@@ -47,7 +47,7 @@ func TestFlow(t *testing.T) {
 	if expected != string(body[:]) {
 		t.Error("bad response")
 	}
-	request, err = http.NewRequest("GET", "http://localhost:8080/api/secured/ping", nil)
+	request, err = http.NewRequest("GET", "http://localhost:8080/api/movies/cities", nil)
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("authorization", tokenResponse.Token)
 	res, err = http.DefaultClient.Do(request)
@@ -56,7 +56,7 @@ func TestFlow(t *testing.T) {
 		t.Error(err) //Something is wrong while sending request
 	}
 	body, _ = ioutil.ReadAll(res.Body)
-	fmt.Println(body)
+	fmt.Println(string(body[:]))
 }
 func Test_GetCities(t *testing.T) {
 
