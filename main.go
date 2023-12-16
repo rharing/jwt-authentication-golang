@@ -32,6 +32,10 @@ func initRouter() *gin.Engine {
 		{
 			secured.GET("/ping", controllers.Ping)
 		}
+		movies := api.Group("/movies").Use(middlewares.Auth())
+		{
+			movies.GET("/cities", controllers.GetCities)
+		}
 	}
 	return router
 }

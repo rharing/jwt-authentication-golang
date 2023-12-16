@@ -12,7 +12,11 @@ type User struct {
 	Email    string `json:"email" gorm:"unique"`
 	Password string `json:"password"`
 }
-
+type UserRepository interface {
+	Get(id int64) (User, error)
+	GetByEmail(email string) (User, error)
+	Update(user User) (User, error)
+}
 
 func (user *User) HashPassword(password string) error {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
