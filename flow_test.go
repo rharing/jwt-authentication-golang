@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"jwt-authentication-golang/movies"
 	"net/http"
 	"testing"
 )
@@ -56,8 +57,13 @@ func TestFlow(t *testing.T) {
 		t.Error(err) //Something is wrong while sending request
 	}
 	body, _ = ioutil.ReadAll(res.Body)
-	fmt.Println(string(body[:]))
-}
-func Test_GetCities(t *testing.T) {
-
+	type jsonCities struct {
+		Key    string
+		Cities []movies.City
+	}
+	var cities jsonCities
+	json.Unmarshal(body, &cities)
+	if len(cities.cities) < 100 {
+		t.Fatal("expected at least 100 cities")
+	}
 }
