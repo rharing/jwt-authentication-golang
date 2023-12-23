@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
-	"jwt-authentication-golang/movies"
+	models "jwt-authentication-golang/models"
 	"net/http"
 	"testing"
 )
@@ -43,7 +44,7 @@ func TestFlow(t *testing.T) {
 	if err != nil {
 		t.Error(err) //Something is wrong while sending request
 	}
-	body, _ = ioutil.ReadAll(res.Body)
+	body, _ = io.ReadAll(res.Body)
 	expected := `{"message":"pong"}`
 	if expected != string(body[:]) {
 		t.Error("bad response")
@@ -56,14 +57,25 @@ func TestFlow(t *testing.T) {
 	if err != nil {
 		t.Error(err) //Something is wrong while sending request
 	}
-	body, _ = ioutil.ReadAll(res.Body)
+	body, _ = io.ReadAll(res.Body)
 	type jsonCities struct {
 		Key    string
-		Cities []movies.City
+		Cities []models.City
 	}
 	var cities jsonCities
 	json.Unmarshal(body, &cities)
-	if len(cities.cities) < 100 {
+	if len(cities.Cities) < 100 {
 		t.Fatal("expected at least 100 cities")
 	}
+	request, err = http.NewRequest("GET", "http://localhost:8080/api/movies/haarlem/", nil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("authorization", tokenResponse.Token)
+	res, err = http.DefaultClient.Do(request)
+
+	if err != nil {
+		t.Error(err) //Something is wrong while sending request
+	}
+	body, _ = ioutil.ReadAll(res.Body)
+	fmt.Println(string(body[:]))
+
 }

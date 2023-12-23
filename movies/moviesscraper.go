@@ -3,6 +3,7 @@ package movies
 import (
 	"fmt"
 	"io/ioutil"
+	models "jwt-authentication-golang/models"
 	"log"
 	"net/http"
 	"os"
@@ -58,16 +59,6 @@ func newError(t ErrorType, msg string) Error {
 	return Error{Type: t, msg: msg}
 }
 
-type Movie struct {
-	id       string
-	title    string `json:"title"`
-	Href     string `json:"href"`
-	rating   string
-	content  string
-	image    string
-	duration int
-	//plays    []Play
-}
 type Event struct {
 	artist string
 	start  time.Time
@@ -92,45 +83,30 @@ var replacer = strings.NewReplacer(
 	"\u2029", replacement,
 )
 
-type Play struct {
-	Movie      Movie `json:"movie"`
-	start      time.Time
-	tickethref string
-}
-type Cinema struct {
-	name  string `json:"Name"`
-	href  string `json:"Href"`
-	plays []Play `json:"plays"`
-}
-type City struct {
-	Href    string    `json:"Href"`
-	Name    string    `json:"name"`
-	cinemas []*Cinema `json:"cinemas"`
-}
 type Talk struct {
 	name  string
 	start time.Time
 	end   time.Time
 }
 
-func LocatePlaysForCity(cityName string) (City, error) {
+func LocatePlaysForCity(cityName string) (models.City, error) {
 	url := fmt.Sprintf("http://filmladder.nl/%s", cityName)
 	return LocatePlays(url)
 }
 
-func LocatePlays(url string) (City, error) {
+func LocatePlays(url string) (models.City, error) {
 	doc, err := load(url)
-	city := City{}
+	city := models.City{}
 	if err != nil {
 		return city, err
 	}
 	city.Name = strings.Trim(strings.TrimPrefix(doc.Find("title").Text(), "Bioscopen in"), " ")
 	cinemasWithplays := locateCineasWithPlays(doc)
-	city.cinemas = cinemasWithplays
+	city.Cinemas = cinemasWithplays
 	return city, nil
 }
-func locateCineasWithPlays(doc *goquery.Document) []*Cinema {
-	cinemasWithplays := make([]*Cinema, 0)
+func locateCineasWithPlays(doc *goquery.Document) []*models.Cinema {
+	cinemasWithplays := make([]*models.Cinema, 0)
 
 	doc.Find("div.cinema").Each(func(i int, s *goquery.Selection) {
 		// first div contains the Href of the cinema
@@ -141,49 +117,49 @@ func locateCineasWithPlays(doc *goquery.Document) []*Cinema {
 
 }
 
-func locatePlays(doc *goquery.Selection) *Cinema {
-	//first div node should contain the matching Href id for the cinems
+func locatePlays(doc *goquery.Selection) *models.Cinema {
+	//first div node should contain the matching Href Id for the cinems
 	cinema := locateCinema(doc)
-	//movies := make([]Movie, 0)
+	//movies := make([]models.Movie, 0)
 	doc.Find("div.hall").Each(func(i int, s *goquery.Selection) {
 		// first div contains the Href of the cinema
 		movie, err := locateMovie(s)
 		if err == nil {
 			plays := locateTimes(s, movie)
-			cinema.plays = append(cinema.plays, plays...)
-			//fmt.Printf("%#v\n", Movie)
+			cinema.Plays = append(cinema.Plays, plays...)
+			//fmt.Printf("%#v\n", models.Movie)
 		}
 	})
 	return &cinema
 }
 
-func locateCinema(doc *goquery.Selection) Cinema {
+func locateCinema(doc *goquery.Selection) models.Cinema {
 	cinemaSelector := doc.Find("a.cinema-link")
-	cinema := Cinema{}
+	cinema := models.Cinema{}
 	title, err := locateNodeValue(cinemaSelector, "title")
 	if err == nil {
-		cinema.name = title
+		cinema.Name = title
 	}
-	href, err2 := locateNodeValue(cinemaSelector, "Href")
+	href, err2 := locateNodeValue(cinemaSelector, "href")
 	if err2 == nil {
-		cinema.href = href
+		cinema.Href = href
 	}
 	return cinema
 
 }
 
-func locateTimes(doc *goquery.Selection, movie Movie) []Play {
-	result := make([]Play, 0)
+func locateTimes(doc *goquery.Selection, movie models.Movie) []models.Play {
+	result := make([]models.Play, 0)
 	weekContainer := doc.Find("div.week-sheet")
 	weekContainer.Find("div.day").Each(func(i int, s *goquery.Selection) {
 		s.Find("div[itemprop=\"startDate\"]").Each(func(i int, timecontainer *goquery.Selection) {
 			playTime, _ := locateValue(timecontainer.Nodes[0].Attr, "content")
 			tijd, _ := time.Parse(time.RFC3339, playTime)
 			ticketLinkNode := timecontainer.Find("a.ticket")
-			play := Play{start: tijd, Movie: movie}
-			value, err := locateNodeValue(ticketLinkNode, "Href")
+			play := models.Play{Start: tijd, Movie: movie}
+			value, err := locateNodeValue(ticketLinkNode, "href")
 			if err == nil {
-				play.tickethref = value
+				play.Tickethref = value
 			}
 			result = append(result, play)
 		})
@@ -231,21 +207,21 @@ func locateEvents(podiumCol *goquery.Selection) []*Event {
 	})
 	return events
 }
-func ParseMovieContent(url string) (Movie, error) {
+func ParseMovieContent(url string) (models.Movie, error) {
 	doc, err := load(url)
 	if err != nil {
-		return Movie{}, err
+		return models.Movie{}, err
 	}
-	movie := Movie{}
-	movie.content = replaceReplacer(doc.Find("p.synopsis").Text())
+	movie := models.Movie{}
+	movie.Content = replaceReplacer(doc.Find("p.synopsis").Text())
 	duration := doc.Find("p[itemprop=duration]").Text()
 	if strings.HasSuffix(duration, "minuten") {
-		movie.duration, _ = strconv.Atoi(strings.TrimSpace(strings.ReplaceAll(duration, "minuten", "")))
+		movie.Duration, _ = strconv.Atoi(strings.TrimSpace(strings.ReplaceAll(duration, "minuten", "")))
 	}
 	return movie, nil
 }
 
-func LoadMovie(id string) (Movie, error) {
+func LoadMovie(id string) (models.Movie, error) {
 	url := fmt.Sprintf("http://filmladder.nl/film/%s", id)
 
 	return ParseMovieContent(url)
@@ -259,10 +235,10 @@ func replaceReplacer(s string) string {
 	return content
 }
 
-func locateMovie(doc *goquery.Selection) (Movie, error) {
+func locateMovie(doc *goquery.Selection) (models.Movie, error) {
 	movieLink := doc.Find("a")
 	if movieLink.Nodes == nil {
-		return Movie{}, newError(ParsingError, "no more movies")
+		return models.Movie{}, newError(ParsingError, "no more movies")
 	}
 	ratingContainer := doc.Find("span.star-rating a")
 	rating := "unknown"
@@ -277,22 +253,22 @@ func locateMovie(doc *goquery.Selection) (Movie, error) {
 	class, _ := locateNodeValue(doc, "class")
 	id := strings.Split(class, " ")[1]
 
-	return Movie{id: id, title: title, image: imageHref, Href: href, rating: rating}, nil
+	return models.Movie{Id: id, Title: title, ImageHref: imageHref, Href: href, Rating: rating}, nil
 
 }
 
-func LocateCities(url string) ([]City, error) {
+func LocateCities(url string) ([]models.City, error) {
 	if url == "" {
 		return LocateCities("http://www.filmladder.nl")
 	}
 	doc, err := load(url)
-	cities := make([]City, 0)
+	cities := make([]models.City, 0)
 	if err != nil {
 		return nil, err
 	}
 	doc.Find("div.cities-sheet>a").Each(func(i int, s *goquery.Selection) {
-		href, _ := locateNodeValue(s, "Href")
-		var city = City{Href: href,
+		href, _ := locateNodeValue(s, "href")
+		var city = models.City{Href: href,
 			Name: s.Text()}
 		cities = append(cities, city)
 	})
@@ -330,7 +306,7 @@ func load(url string) (*goquery.Document, error) {
 			fileUrl := url[7:]
 			return LoadFromFile(fileUrl)
 		} else {
-			return nil, newError(WrongURL, "url should start with file or http")
+			return nil, newError(WrongURL, "url should Start with file or http")
 		}
 	}
 	//return nil, nil
