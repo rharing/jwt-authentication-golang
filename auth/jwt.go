@@ -2,12 +2,17 @@ package auth
 
 import (
 	"errors"
+	"jwt-authentication-golang/config"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 )
 
 var jwtKey = []byte("supersecretkey")
+
+func init() {
+	jwtKey = []byte(config.Config("jwt_key"))
+}
 
 type JWTClaim struct {
 	Username string `json:"username"`
@@ -17,8 +22,8 @@ type JWTClaim struct {
 
 func GenerateJWT(email string, username string) (tokenString string, err error) {
 	expirationTime := time.Now().Add(1 * time.Hour)
-	claims:= &JWTClaim{
-		Email: email,
+	claims := &JWTClaim{
+		Email:    email,
 		Username: username,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expirationTime.Unix(),
@@ -29,7 +34,7 @@ func GenerateJWT(email string, username string) (tokenString string, err error) 
 	return
 }
 
-func ValidateToken(signedToken string) (err error) {
+func ValidateToken(signedToken string) (claims *JWTClaim, err error) {
 	token, err := jwt.ParseWithClaims(
 		signedToken,
 		&JWTClaim{},
@@ -39,20 +44,20 @@ func ValidateToken(signedToken string) (err error) {
 	)
 
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	claims, ok := token.Claims.(*JWTClaim)
 	if !ok {
 		err = errors.New("couldn't parse claims")
-		return
+		return nil, err
 	}
 
 	if claims.ExpiresAt < time.Now().Local().Unix() {
 		err = errors.New("token expired")
-		return
+		return nil, err
 	}
-	
-	return
+
+	return claims, nil
 
 }

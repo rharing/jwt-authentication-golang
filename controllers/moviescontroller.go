@@ -8,8 +8,23 @@ import (
 	"net/http"
 )
 
+type RouteController struct {
+}
+
+var moviesProvider	models.MoviesRepository
+
+func init() {
+	moviesProvider = movies.NewInMemoryMoviesRepository()
+}
+const overviewLocation = "file://./movies/resources/overview_haarlem.html"
+const oppenheimerLocation = "file://./movies/resources/oppenheimer.html"
+
 func GetCities(context *gin.Context) {
-	cities, err := movies.LocateCities("")
+	var url = "http://www.filmladder.nl"
+	if context.Query("use4Testing") == "1" {
+		url = overviewLocation
+	}
+	cities, err := movies.LocateCities(url)
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"message": err})
 	} else {
@@ -20,8 +35,7 @@ func GetCities(context *gin.Context) {
 }
 
 func GetCity(context *gin.Context) {
-	city := context.Param("city")
-	CityWithPlays, err := movies.LocatePlaysForCity(city)
+	CityWithPlays, err := locatePlays(context)
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"message": err})
 	} else {
@@ -31,10 +45,50 @@ func GetCity(context *gin.Context) {
 				cinema := CityWithPlays.Cinemas[i]
 				for j := 0; j < len(cinema.Plays); j++ {
 					play := cinema.Plays[j]
-					playDtos = append(playDtos, models.PlayDTO{Title: play.Movie.Title, Href: play.Movie.Href, Start: play.Start})
+					playDtos = append(playDtos, models.PlayDTO{
+						Title:      play.Movie.Title,
+						MovieId:    play.Movie.Id,
+						Tickethref: play.Tickethref,
+						Moviehref:  play.Movie.Href,
+						Start:      play.Start})
 				}
 			}
 			context.JSON(http.StatusOK, gin.H{"plays": playDtos})
 		}
+	}
+}
+func GetMovie(context *gin.Context) {
+	movie, err := locateMovie(context)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"message": err})
+	} else {
+		context.JSON(http.StatusOK, gin.H{"movie": movie})
+	}
+}
+
+func locateMovie(context *gin.Context) (models.Movie, error) {
+	var id = context.Param("movieId")
+	url := locateExternalUrlFromId(id)
+	if context.Query("use4Testing") == "1" {
+		url = oppenheimerLocation
+	}
+	return models.MoviesRepository.LoadMovieContent(url)
+}
+
+func locateExternalUrlFromId(id string) string {
+
+}
+
+}
+
+func locatePlays(context *gin.Context) (models.City, error) {
+	var url = context.Param("city")
+
+	if context.Query("use4Testing") == "1" {
+		url = overviewLocation
+		return movies.LocatePlays(url)
+	}
+	{
+		return movies.LocatePlaysForCity(url)
 	}
 }

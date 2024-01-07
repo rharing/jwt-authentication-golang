@@ -7,7 +7,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/json-iterator/go v1.1.12
 	github.com/ledongthuc/goterators v1.0.2
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.4
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
 	golang.org/x/net v0.7.0
 )

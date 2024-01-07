@@ -24,6 +24,7 @@ func main() {
 
 func initRouter() *gin.Engine {
 	router := gin.Default()
+
 	api := router.Group("/api")
 	{
 		api.POST("/token", controllers.GenerateToken)
@@ -35,6 +36,10 @@ func initRouter() *gin.Engine {
 		movies := api.Group("/movies").Use(middlewares.Auth())
 		{
 			movies.GET("/cities", controllers.GetCities)
+		}
+		movie := api.Group("/movie/:movieId").Use(middlewares.Auth())
+		{
+			movie.GET("/", controllers.GetMovie)
 		}
 		cityMovies := api.Group("/movies/:city").Use(middlewares.Auth())
 		{

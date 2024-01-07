@@ -1,6 +1,8 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 type Play struct {
 	Movie      Movie     `json:"movie"`
@@ -27,10 +29,27 @@ type City struct {
 	Cinemas []*Cinema `json:"Cinemas"`
 }
 type PlayDTO struct {
-	Title string    `json:"title"`
-	Href  string    `json:"href"`
-	Start time.Time `json:"start"`
+	Title      string    `json:"title"`
+	MovieId    string    `json:"movie-id"`
+	Moviehref  string    `json:"movie"`
+	Tickethref string    `json:"ticket"`
+	Start      time.Time `json:"start"`
 }
 type MoviesScraper interface {
 	LocateCities(url string) ([]City, error)
+	LocatePlaysForCity(city string) (City, error)
+	LoadMovieContent(movieId string) (Movie, error)
+}
+type MyMovies struct {
+	Wanted   []string
+	Unwanted []string
+	Seen     []string
+}
+type MoviesRepository interface {
+	LoadMovieContent(id string) (Movie, error)
+	SeenMovie(movieid string, userId string)
+	WantedMovie(movieid string, userId string)
+	UnwantedMovie(movieid string, userId string)
+	ResetMovie(movieid string, userId string)
+	MyMovies(userId string) MyMovies
 }

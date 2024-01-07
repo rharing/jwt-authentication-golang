@@ -3,7 +3,7 @@ package movies
 import (
 	"fmt"
 	"io/ioutil"
-	models "jwt-authentication-golang/models"
+	"jwt-authentication-golang/models"
 	"log"
 	"net/http"
 	"os"
@@ -26,7 +26,8 @@ var (
 	Headers = make(map[string]string)
 
 	// Cookies contains all HTTP cookies to send
-	Cookies = make(map[string]string)
+	Cookies               = make(map[string]string)
+	externalContentLoader ExternalContentLoader
 )
 
 // ErrorType defines types of errors that are possible from soup
@@ -39,6 +40,7 @@ const (
 	ErrReadingResponse
 	ValNotFound
 	ParsingError
+	FileNotFound
 )
 
 // Error allows easier introspection on the type of error returned.
@@ -207,7 +209,7 @@ func locateEvents(podiumCol *goquery.Selection) []*Event {
 	})
 	return events
 }
-func ParseMovieContent(url string) (models.Movie, error) {
+func LoadMovieContent(url string) (models.Movie, error) {
 	doc, err := load(url)
 	if err != nil {
 		return models.Movie{}, err
@@ -224,7 +226,7 @@ func ParseMovieContent(url string) (models.Movie, error) {
 func LoadMovie(id string) (models.Movie, error) {
 	url := fmt.Sprintf("http://filmladder.nl/film/%s", id)
 
-	return ParseMovieContent(url)
+	return LoadMovieContent(url)
 }
 
 func replaceReplacer(s string) string {
@@ -258,9 +260,6 @@ func locateMovie(doc *goquery.Selection) (models.Movie, error) {
 }
 
 func LocateCities(url string) ([]models.City, error) {
-	if url == "" {
-		return LocateCities("http://www.filmladder.nl")
-	}
 	doc, err := load(url)
 	cities := make([]models.City, 0)
 	if err != nil {
@@ -316,6 +315,14 @@ func LoadFromFile(url string) (*goquery.Document, error) {
 	// create from a file
 	f, err := os.Open(url)
 	if err != nil {
+		entries, err := os.ReadDir("./")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for _, e := range entries {
+			fmt.Println(e.Name())
+		}
 		log.Fatal(err)
 	}
 	defer f.Close()
@@ -345,9 +352,6 @@ func setHeadersAndCookies(req *http.Request) {
 func GetWithClient(url string, client *http.Client) (string, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		if debug {
-			panic("Couldn't create GET request to " + url)
-		}
 		return "", newError(ErrCreatingGetRequest, "error creating get request to "+url)
 	}
 
@@ -356,9 +360,6 @@ func GetWithClient(url string, client *http.Client) (string, error) {
 	// Perform request
 	resp, err := client.Do(req)
 	if err != nil {
-		if debug {
-			panic("Couldn't perform GET request to " + url)
-		}
 		return "", newError(ErrInGetRequest, "couldn't perform GET request to "+url)
 	}
 	defer resp.Body.Close()
@@ -368,10 +369,11 @@ func GetWithClient(url string, client *http.Client) (string, error) {
 	}
 	bytes, err := ioutil.ReadAll(utf8Body)
 	if err != nil {
-		if debug {
-			panic("Unable to read the response body")
-		}
 		return "", newError(ErrReadingResponse, "unable to read the response body")
 	}
 	return string(bytes), nil
+}
+
+type ExternalContentLoader interface {
+	Load() (*goquery.Document, error)
 }
